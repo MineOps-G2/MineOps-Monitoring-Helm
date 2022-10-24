@@ -204,7 +204,14 @@ alertmanager:
         matchers:
           - alertname =~ "InfoInhibitor|Watchdog"
     receivers:
-    - name: 'null'
+    - name: 'aws-monitoring'
+      slack_configs:
+      - channel: ''
+        api_url: "https://hooks.slack.com/services/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"
+        send_resolved: true
+        icon_url: <https://avatars3.githubusercontent.com/u/3380462>
+        title: "{{ range .Alerts }}{{ .Annotations.title }}\\n{{ end }}"
+        text: "{{ range .Alerts }}{{ .Annotations.message }}\\n{{ end }}"
     templates:
     - '/etc/alertmanager/config/*.tmpl'
 
@@ -369,7 +376,7 @@ alertmanager:
 
     ## Service type
     ##
-    type: ClusterIP
+    type: LoadBalancer
 
   ## Configuration for creating a separate Service for each statefulset Alertmanager replica
   ##
@@ -2077,7 +2084,7 @@ prometheus:
 
     ## Service type
     ##
-    type: ClusterIP
+    type: LoadBalancer
 
     ## Additional port to define in the Service
     additionalPorts: []
@@ -2683,7 +2690,11 @@ prometheus:
     ## The scrape configuration example below will find master nodes, provided they have the name .*mst.*, relabel the
     ## port to 2379 and allow etcd scraping provided it is running on all Kubernetes master nodes
     ##
-    additionalScrapeConfigs: []
+    additionalScrapeConfigs: 
+      - job_name: mc-monitor
+        static_configs:
+        - targets:
+            - mc-monitor:8080
     # - job_name: kube-etcd
     #   kubernetes_sd_configs:
     #     - role: node
