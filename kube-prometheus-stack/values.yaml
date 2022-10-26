@@ -95,15 +95,32 @@ defaultRules:
 
 ## Provide custom recording or alerting rules to be deployed into the cluster.
 ##
-additionalPrometheusRulesMap: {}
-#  rule-name:
-#    groups:
-#    - name: my_group
-#      rules:
-#      - record: my_record
-#        expr: 100 * my_record
+additionalPrometheusRulesMap:
+  rule-name:
+    groups:
+    - name: "Minecraft-PlayerCount"
+      rules:
+        - alert: 'maximum capacity'
+          expr: minecraft_status_players_online_count > 0
+          for: 10s
+          labels:
+            severity: warning
+            service: minecraft
+          annotations:
+            title: "The server's maximum capacity has been exceeded."
+            message: "Current number of users is {{ range query \"minecraft_status_players_online_count\" }}{{ .Value }}{{ end }}"
+    - name: "Minecraft-Empty"
+      rules:
+        - alert: 'No people left on the server'
+          expr: minecraft_status_players_online_count == 0
+          for: 10s
+          labels:
+            severity: info
+            service: minecraft
+          annotations:
+            title: "There are no people left on the server."
+            message: "Current number of users is 0"
 
-##
 global:
   rbac:
     create: true
@@ -171,47 +188,28 @@ alertmanager:
   ##
   config:
     global:
-      resolve_timeout: 5m
-    inhibit_rules:
-      - source_matchers:
-          - 'severity = critical'
-        target_matchers:
-          - 'severity =~ warning|info'
-        equal:
-          - 'namespace'
-          - 'alertname'
-      - source_matchers:
-          - 'severity = warning'
-        target_matchers:
-          - 'severity = info'
-        equal:
-          - 'namespace'
-          - 'alertname'
-      - source_matchers:
-          - 'alertname = InfoInhibitor'
-        target_matchers:
-          - 'severity = info'
-        equal:
-          - 'namespace'
+      resolve_timeout: 1m
     route:
-      group_by: ['namespace']
+      receiver: 'slack-notifications'
       group_wait: 30s
-      group_interval: 5m
-      repeat_interval: 12h
-      receiver: 'null'
-      routes:
-      - receiver: 'null'
-        matchers:
-          - alertname =~ "InfoInhibitor|Watchdog"
+      group_interval: 1m
+      repeat_interval: 10m
+      group_by: [service]
     receivers:
-    - name: 'aws-monitoring'
+    - name: 'slack-notifications'
       slack_configs:
-      - channel: ''
-        api_url: "https://hooks.slack.com/services/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"
-        send_resolved: true
-        icon_url: <https://avatars3.githubusercontent.com/u/3380462>
-        title: "{{ range .Alerts }}{{ .Annotations.title }}\\n{{ end }}"
-        text: "{{ range .Alerts }}{{ .Annotations.message }}\\n{{ end }}"
+      - channel: '#monitoring'
+        username: 'prometheus'
+        title: |-
+          [{{ .Status | toUpper }}{{ if eq .Status "firing" }}:{{ .Alerts.Firing | len }}{{ end }}] {{ range .Alerts }}{{ .Annotations.title }}{{ end }}
+        text: >-
+          {{ range .Alerts -}}
+          *Description:* {{ .Annotations.message }}
+
+          *Details:*
+            {{ range .Labels.SortedPairs }} • *{{ .Name }}:* `{{ .Value }}`
+            {{ end }}
+          {{ end }}
     templates:
     - '/etc/alertmanager/config/*.tmpl'
 
