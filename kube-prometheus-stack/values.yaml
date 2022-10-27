@@ -189,6 +189,7 @@ alertmanager:
   config:
     global:
       resolve_timeout: 1m
+      slack_api_url: ""
     route:
       receiver: 'slack-notifications'
       group_wait: 30s
