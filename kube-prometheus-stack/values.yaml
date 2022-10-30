@@ -101,7 +101,7 @@ additionalPrometheusRulesMap:
     - name: "Minecraft-PlayerCount"
       rules:
         - alert: 'maximum capacity'
-          expr: minecraft_status_players_online_count > 0
+          expr: minecraft_status_players_online_count == minecraft_status_players_max_count
           for: 10s
           labels:
             severity: warning
@@ -120,6 +120,17 @@ additionalPrometheusRulesMap:
           annotations:
             title: "There are no people left on the server."
             message: "Current number of users is 0"
+    - name: "Minecraft-Healthy"
+      rules:
+        - alert: 'Minecraft Healthy'
+          expr: minecraft_status_healthy == 0
+          for: 10s
+          labels:
+            severity: info
+            service: minecraft
+          annotations:
+            title: "Server Down"
+            message: "Minecraft server is not ready"
 
 global:
   rbac:
@@ -194,7 +205,7 @@ alertmanager:
       receiver: 'slack-notifications'
       group_wait: 30s
       group_interval: 1m
-      repeat_interval: 10m
+      repeat_interval: 60m
       group_by: [service]
     receivers:
     - name: 'slack-notifications'
